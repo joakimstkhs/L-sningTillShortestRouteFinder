@@ -15,7 +15,7 @@ namespace ShortestRouteFinder.Model
 
         public string Start
         {
-            get => _start;
+            get => _start!;
             set
             {
                 _start = value;
@@ -25,7 +25,7 @@ namespace ShortestRouteFinder.Model
 
         public string Destination
         {
-            get => _destination;
+            get => _destination!;
             set
             {
                 _destination = value;
