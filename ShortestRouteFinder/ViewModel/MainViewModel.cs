@@ -14,8 +14,8 @@ namespace ShortestRouteFinder.ViewModel
         private Route _selectedRoute = new();
         private SortType _selectedSortType = SortType.QuickSort;
         private SortDirection _selectedSortDirection = SortDirection.Ascending;
-        private bool _isEditing = false;
-        private Route? _routeBeforeEdit = null;
+        private bool _isEditing;
+        private Route? _routeBeforeEdit;
         
         public event PropertyChangedEventHandler? PropertyChanged;
         
@@ -28,6 +28,7 @@ namespace ShortestRouteFinder.ViewModel
         public ICommand SaveCommand { get; }
         public ICommand CancelCommand { get; }
         public ICommand AddNewCommand { get; }
+        public ICommand RemoveCommand { get; }
 
         public bool IsEditing
         {
@@ -55,7 +56,7 @@ namespace ShortestRouteFinder.ViewModel
                 if (_isEditing) return; // Prevent selection change while editing
                 if (value != null)
                 {
-                    _selectedRoute = value.Clone(); // Create a clone for editing
+                    _selectedRoute = value.Clone();
                     _routeBeforeEdit = value;
                 }
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedRoute)));
@@ -75,7 +76,30 @@ namespace ShortestRouteFinder.ViewModel
             SaveCommand = new RelayCommand(Save, () => IsEditing);
             CancelCommand = new RelayCommand(Cancel, () => IsEditing);
             AddNewCommand = new RelayCommand(AddNew, () => !IsEditing);
+            RemoveCommand = new RelayCommand(RemoveRoute, () => !IsEditing && SelectedRoute != null);
             Load();
+        }
+
+        private void RemoveRoute()
+        {
+            if (SelectedRoute == null) return;
+
+            var result = MessageBox.Show(
+                $"Are you sure you want to remove the route from {SelectedRoute.Start} to {SelectedRoute.Destination}?",
+                "Confirm Removal",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result == MessageBoxResult.Yes)
+            {
+                Try(() =>
+                {
+                    Routes.Remove(_routeBeforeEdit!);
+                    File.WriteAllText("routes.json", JsonConvert.SerializeObject(Routes, Formatting.Indented));
+                    SelectedRoute = Routes.FirstOrDefault() ?? new();
+                    SortingStatus = "Route removed successfully";
+                });
+            }
         }
 
         private void AddNew()
@@ -84,6 +108,8 @@ namespace ShortestRouteFinder.ViewModel
             Routes.Add(newRoute);
             SelectedRoute = newRoute;
             IsEditing = true;
+            _routeBeforeEdit = newRoute;
+            SortingStatus = "Adding new route";
         }
 
         private void Save()
@@ -99,7 +125,6 @@ namespace ShortestRouteFinder.ViewModel
                     }
                 }
                 
-                // Save to file
                 File.WriteAllText("routes.json", JsonConvert.SerializeObject(Routes, Formatting.Indented));
                 
                 IsEditing = false;
@@ -112,12 +137,19 @@ namespace ShortestRouteFinder.ViewModel
         {
             if (_routeBeforeEdit != null)
             {
+                if (Routes.Contains(_routeBeforeEdit) && _routeBeforeEdit.Start == "New Start" 
+                    && _routeBeforeEdit.Destination == "New Destination" && _routeBeforeEdit.Distance == 0)
+                {
+                    // Remove the new route if it was cancelled
+                    Routes.Remove(_routeBeforeEdit);
+                }
                 SelectedRoute = _routeBeforeEdit;
                 _routeBeforeEdit = null;
             }
             IsEditing = false;
             SortingStatus = "Edit cancelled";
         }
+
 
         private void Sort() => Try(() =>
         {
