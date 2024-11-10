@@ -32,6 +32,17 @@
             <Setter Property="Margin" Value="0,0,20,5"/>
             <Setter Property="Padding" Value="5,3"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsEditing}" Value="False">
+                    <Setter Property="IsEnabled" Value="False"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="EditButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="15,5"/>
+            <Setter Property="Margin" Value="5,10,5,0"/>
+            <Setter Property="MinWidth" Value="80"/>
         </Style>
     </Window.Resources>
 
@@ -81,6 +92,9 @@
                             Style="{StaticResource ButtonStyle}"/>
                     <Button Content="Sort Routes" 
                             Command="{Binding SortCommand}"
+                            Style="{StaticResource ButtonStyle}"/>
+                    <Button Content="Add New" 
+                            Command="{Binding AddNewCommand}"
                             Style="{StaticResource ButtonStyle}"/>
                 </StackPanel>
             </StackPanel>
@@ -136,6 +150,7 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <!-- Start Point -->
@@ -167,6 +182,22 @@
                          Grid.Column="1" 
                          Grid.Row="1"
                          Style="{StaticResource EditorTextBox}"/>
+
+                <!-- Edit Buttons -->
+                <StackPanel Grid.Row="2" 
+                          Grid.Column="0"
+                          Grid.ColumnSpan="4"
+                          Orientation="Horizontal"
+                          HorizontalAlignment="Center">
+                    <Button Content="Save" 
+                            Command="{Binding SaveCommand}"
+                            Style="{StaticResource EditButtonStyle}"
+                            Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <Button Content="Cancel" 
+                            Command="{Binding CancelCommand}"
+                            Style="{StaticResource EditButtonStyle}"
+                            Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                </StackPanel>
             </Grid>
         </GroupBox>
     </Grid>

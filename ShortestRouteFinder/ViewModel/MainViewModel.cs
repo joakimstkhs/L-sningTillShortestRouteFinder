@@ -14,6 +14,8 @@ namespace ShortestRouteFinder.ViewModel
         private Route _selectedRoute = new();
         private SortType _selectedSortType = SortType.QuickSort;
         private SortDirection _selectedSortDirection = SortDirection.Ascending;
+        private bool _isEditing = false;
+        private Route? _routeBeforeEdit = null;
         
         public event PropertyChangedEventHandler? PropertyChanged;
         
@@ -23,6 +25,15 @@ namespace ShortestRouteFinder.ViewModel
         
         public ICommand SortCommand { get; }
         public ICommand LoadCommand { get; }
+        public ICommand SaveCommand { get; }
+        public ICommand CancelCommand { get; }
+        public ICommand AddNewCommand { get; }
+
+        public bool IsEditing
+        {
+            get => _isEditing;
+            private set => Update(ref _isEditing, value);
+        }
 
         public SortType SelectedSortType
         {
@@ -39,7 +50,16 @@ namespace ShortestRouteFinder.ViewModel
         public Route SelectedRoute
         {
             get => _selectedRoute;
-            set => Update(ref _selectedRoute, value);
+            set
+            {
+                if (_isEditing) return; // Prevent selection change while editing
+                if (value != null)
+                {
+                    _selectedRoute = value.Clone(); // Create a clone for editing
+                    _routeBeforeEdit = value;
+                }
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedRoute)));
+            }
         }
 
         public string? SortingStatus
@@ -50,9 +70,53 @@ namespace ShortestRouteFinder.ViewModel
 
         public MainViewModel()
         {
-            SortCommand = new RelayCommand(Sort);
-            LoadCommand = new RelayCommand(Load);
+            SortCommand = new RelayCommand(Sort, () => !IsEditing);
+            LoadCommand = new RelayCommand(Load, () => !IsEditing);
+            SaveCommand = new RelayCommand(Save, () => IsEditing);
+            CancelCommand = new RelayCommand(Cancel, () => IsEditing);
+            AddNewCommand = new RelayCommand(AddNew, () => !IsEditing);
             Load();
+        }
+
+        private void AddNew()
+        {
+            var newRoute = new Route { Start = "New Start", Destination = "New Destination", Distance = 0 };
+            Routes.Add(newRoute);
+            SelectedRoute = newRoute;
+            IsEditing = true;
+        }
+
+        private void Save()
+        {
+            Try(() =>
+            {
+                if (_routeBeforeEdit != null)
+                {
+                    var index = Routes.IndexOf(_routeBeforeEdit);
+                    if (index != -1)
+                    {
+                        Routes[index] = _selectedRoute;
+                    }
+                }
+                
+                // Save to file
+                File.WriteAllText("routes.json", JsonConvert.SerializeObject(Routes, Formatting.Indented));
+                
+                IsEditing = false;
+                _routeBeforeEdit = null;
+                SortingStatus = "Changes saved successfully";
+            });
+        }
+
+        private void Cancel()
+        {
+            if (_routeBeforeEdit != null)
+            {
+                SelectedRoute = _routeBeforeEdit;
+                _routeBeforeEdit = null;
+            }
+            IsEditing = false;
+            SortingStatus = "Edit cancelled";
         }
 
         private void Sort() => Try(() =>
@@ -122,8 +186,11 @@ namespace ShortestRouteFinder.ViewModel
         private void Load() => Try(() =>
         {
             Routes.Clear();
-            JsonConvert.DeserializeObject<List<Route>>(
-                File.ReadAllText("routes.json"))?.ForEach(Routes.Add);
+            if (File.Exists("routes.json"))
+            {
+                JsonConvert.DeserializeObject<List<Route>>(
+                    File.ReadAllText("routes.json"))?.ForEach(Routes.Add);
+            }
             SelectedRoute = Routes.FirstOrDefault() ?? new();
             SortingStatus = "Loaded";
         });
