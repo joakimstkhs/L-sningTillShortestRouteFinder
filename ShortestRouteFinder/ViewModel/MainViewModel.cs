@@ -19,84 +19,59 @@ namespace ShortestRouteFinder.ViewModel
         Ascending,
         Descending
     }
+
     public class MainViewModel : INotifyPropertyChanged
     {
-        public ObservableCollection<Route> Routes { get; set; }
+        public ObservableCollection<Route> Routes { get; private set; }
         private string? _sortingStatus;
-        private ICommand? _sortCommand;
-        private ICommand? _loadCommand;
-        private ICommand? _visualizeSortCommand;
-        private SortType _selectedSortType;
-        private SortDirection _selectedSortDirection;
         private bool _isSorting;
-
         private Route _selectedRoute;
-        public Route SelectedRoute
-        {
-            get => _selectedRoute;
-            set
-            {
-                _selectedRoute = value;
-                OnPropertyChanged(nameof(SelectedRoute));
-            }
-        }
+        private SortType _selectedSortType = SortType.QuickSort;
+        private SortDirection _selectedSortDirection = SortDirection.Ascending;
 
         public MainViewModel()
         {
             Routes = new ObservableCollection<Route>(LoadRoutes());
             _selectedRoute = Routes.FirstOrDefault() ?? new Route();
-            _selectedSortType = SortType.QuickSort;
-            _selectedSortDirection = SortDirection.Ascending;
-            _isSorting = false;
             SortingStatus = "Ready to sort";
         }
 
-        public bool IsSorting
+        public Route SelectedRoute
+        {
+            get => _selectedRoute;
+            set => SetProperty(ref _selectedRoute, value);
+        }
+
+        private bool IsSorting
         {
             get => _isSorting;
-            private set
-            {
-                _isSorting = value;
-                OnPropertyChanged(nameof(IsSorting));
-            }
+            set => SetProperty(ref _isSorting, value);
         }
 
         public string? SortingStatus
         {
             get => _sortingStatus;
-            set
-            {
-                _sortingStatus = value;
-                OnPropertyChanged(nameof(SortingStatus));
-            }
+            private set => SetProperty(ref _sortingStatus, value);
         }
 
         public SortType SelectedSortType
         {
             get => _selectedSortType;
-            set
-            {
-                _selectedSortType = value;
-                OnPropertyChanged(nameof(SelectedSortType));
-            }
+            set => SetProperty(ref _selectedSortType, value);
         }
 
         public SortDirection SelectedSortDirection
         {
             get => _selectedSortDirection;
-            set
-            {
-                _selectedSortDirection = value;
-                OnPropertyChanged(nameof(SelectedSortDirection));
-            }
+            set => SetProperty(ref _selectedSortDirection, value);
         }
-        
+
         public Array SortTypes => Enum.GetValues(typeof(SortType));
         public Array SortDirections => Enum.GetValues(typeof(SortDirection));
-        
-        public ICommand SortCommand => _sortCommand ??= new RelayCommand(ExecuteSort, () => !IsSorting);
-        public ICommand LoadCommand => _loadCommand ??= new RelayCommand(ExecuteLoad, () => !IsSorting);
-        public ICommand VisualizeSortCommand => _visualizeSortCommand ??= new RelayCommand(Execute, () => !IsSorting);
+
+        public ICommand SortCommand => new RelayCommand(ExecuteSort, () => !IsSorting);
+        public ICommand LoadCommand => new RelayCommand(ExecuteLoad, () => !IsSorting);
+        public ICommand VisualizeSortCommand => new RelayCommand(Execute, () => !IsSorting);
 
         private async void Execute()
         {
@@ -118,8 +93,7 @@ namespace ShortestRouteFinder.ViewModel
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error reloading routes: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                SortingStatus = "Error reloading routes";
+                DisplayError("Error reloading routes", ex);
             }
         }
 
@@ -128,7 +102,6 @@ namespace ShortestRouteFinder.ViewModel
             try
             {
                 IsSorting = true;
-                var watch = System.Diagnostics.Stopwatch.StartNew();
                 var routesList = Routes.ToList();
 
                 if (SelectedSortType == SortType.BubbleSort)
@@ -139,21 +112,13 @@ namespace ShortestRouteFinder.ViewModel
                 {
                     QuickSort(routesList, 0, routesList.Count - 1);
                 }
-                
-                watch.Stop();
-                
-                Routes.Clear();
-                foreach (var route in routesList)
-                {
-                    Routes.Add(route);
-                }
-                
-                SortingStatus = $"Sorted using {SelectedSortType} in {watch.ElapsedMilliseconds} ms";
+
+                UpdateRoutes(routesList);
+                SortingStatus = $"Sorted using {SelectedSortType} in {System.Diagnostics.Stopwatch.StartNew().ElapsedMilliseconds} ms";
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error during sorting: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                SortingStatus = "Error during sorting";
+                DisplayError("Error during sorting", ex);
             }
             finally
             {
@@ -174,15 +139,14 @@ namespace ShortestRouteFinder.ViewModel
                 }
                 else
                 {
-                    await QuickSortWithVisualization(routesList, 0, routesList.Count - 1);
+                    await QuickSortWithVisualization(routesList, 0, routesList.Count - 1, routesList.Count);
                 }
-                
+
                 SortingStatus = $"Visualization of {SelectedSortType} completed";
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error during sort visualization: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                SortingStatus = "Error during sort visualization";
+                DisplayError("Error during sort visualization", ex);
             }
             finally
             {
@@ -192,19 +156,10 @@ namespace ShortestRouteFinder.ViewModel
 
         private void BubbleSort(List<Route> routes)
         {
-            int totalComparisons = routes.Count * (routes.Count - 1) / 2;
-            int comparisons = 0;
-
-            for (int i = 0; i < routes.Count - 1; i++)
+            for (var i = 0; i < routes.Count - 1; i++)
             {
-                for (int j = 0; j < routes.Count - i - 1; j++)
+                for (var j = 0; j < routes.Count - i - 1; j++)
                 {
-                    comparisons++;
-                    if (comparisons % 10 == 0) // Update status every 10 comparisons
-                    {
-                        SortingStatus = $"Bubble Sort in progress... {(comparisons * 100 / totalComparisons)}%";
-                    }
-
                     if (ShouldSwap(routes[j].Distance, routes[j + 1].Distance))
                     {
                         (routes[j], routes[j + 1]) = (routes[j + 1], routes[j]);
@@ -222,14 +177,8 @@ namespace ShortestRouteFinder.ViewModel
                     if (ShouldSwap(routes[j].Distance, routes[j + 1].Distance))
                     {
                         (routes[j], routes[j + 1]) = (routes[j + 1], routes[j]);
-                        
-                        // Update UI every swap for visualization
-                        Routes.Clear();
-                        foreach (var route in routes)
-                        {
-                            Routes.Add(route);
-                        }
-                        await Task.Delay(100); // Delay to show the swap
+                        UpdateRoutes(routes);
+                        await Task.Delay(100);
                     }
                 }
                 SortingStatus = $"Bubble Sort: {((i + 1) * 100 / (routes.Count - 1))}% complete";
@@ -238,97 +187,141 @@ namespace ShortestRouteFinder.ViewModel
 
         private void QuickSort(List<Route> routes, int low, int high)
         {
-            while (true)
+            if (low < high)
             {
-                if (low >= high) return;
-                var p = Partition(routes, low, high);
+                int p = Partition(routes, low, high);
                 QuickSort(routes, low, p - 1);
-                low = p + 1;
+                QuickSort(routes, p + 1, high);
             }
         }
 
-        private async Task QuickSortWithVisualization(List<Route> routes, int low, int high)
+        private async Task QuickSortWithVisualization(List<Route> routes, int low, int high, int totalElements)
         {
-            if (low >= high) return;
+            if (low < high)
+            {
+                int pivotIndex = await PartitionWithVisualization(routes, low, high, totalElements);
 
-            var p = await PartitionWithVisualization(routes, low, high);
-            await QuickSortWithVisualization(routes, low, p - 1);
-            await QuickSortWithVisualization(routes, p + 1, high);
+                // Calculate percentage progress based on current partition
+                int sortedElements = high - low + 1; // Elements sorted in this partition
+                int progressPercentage = (sortedElements * 100) / totalElements;
+                SortingStatus = $"Quick Sort: {progressPercentage}% complete";
+
+                // Recursively sort the partitions with visualization
+                await QuickSortWithVisualization(routes, low, pivotIndex - 1, totalElements);
+                await QuickSortWithVisualization(routes, pivotIndex + 1, high, totalElements);
+            }
         }
 
-        private int Partition(List<Route> routes, int low, int high)
+        // Make sure to pass `totalElements` when first calling QuickSortWithVisualization
+        public async Task StartQuickSortVisualization()
         {
+            var totalElements = Routes.Count;
+            await QuickSortWithVisualization(Routes.ToList(), 0, Routes.Count - 1, totalElements);
+        }
+
+
+        private async Task<int> PartitionWithVisualization(List<Route> routes, int low, int high, int totalElements)
+        {
+            var i = low;
             var pivot = routes[high].Distance;
-            int i = low - 1;
 
             for (int j = low; j < high; j++)
             {
                 if (ShouldSwap(routes[j].Distance, pivot)) continue;
-                i++;
                 (routes[i], routes[j]) = (routes[j], routes[i]);
+                UpdateRoutes(routes);
+                await Task.Delay(100);
+                i++;
             }
-            
-            (routes[i + 1], routes[high]) = (routes[high], routes[i + 1]);
-            
-            return i + 1;
+            (routes[i], routes[high]) = (routes[high], routes[i]);
+            UpdateRoutes(routes);
+            await Task.Delay(100);
+
+            return i;
         }
 
-        private async Task<int> PartitionWithVisualization(List<Route> routes, int low, int high)
+
+        private int Partition(List<Route> routes, int low, int high)
         {
             var pivot = routes[high].Distance;
-            int i = low - 1;
+            int i = low;
 
             for (int j = low; j < high; j++)
             {
                 if (!ShouldSwap(routes[j].Distance, pivot))
                 {
-                    i++;
                     (routes[i], routes[j]) = (routes[j], routes[i]);
-                    
-                    // Update UI for visualization
-                    Routes.Clear();
-                    foreach (var route in routes)
-                    {
-                        Routes.Add(route);
-                    }
-                    await Task.Delay(100);
+                    i++;
                 }
             }
-            
-            (routes[i + 1], routes[high]) = (routes[high], routes[i + 1]);
-            
-            // Update UI for visualization
-            Routes.Clear();
-            foreach (var route in routes)
-            {
-                Routes.Add(route);
-            }
-            await Task.Delay(100);
-            
-            return i + 1;
+            (routes[i], routes[high]) = (routes[high], routes[i]);
+            return i;
         }
 
-        private bool ShouldSwap(int a, int b)
+        private async Task<int> PartitionWithVisualization(List<Route> routes, int low, int high)
         {
-            return SelectedSortDirection == SortDirection.Ascending ? a > b : a < b;
+            int i = low;
+            var pivot = routes[high].Distance;
+
+            for (int j = low; j < high; j++)
+            {
+                if (!ShouldSwap(routes[j].Distance, pivot))
+                {
+                    (routes[i], routes[j]) = (routes[j], routes[i]);
+                    UpdateRoutes(routes);
+                    await Task.Delay(100);
+                    i++;
+                }
+            }
+            (routes[i], routes[high]) = (routes[high], routes[i]);
+            UpdateRoutes(routes);
+            await Task.Delay(100);
+            return i;
         }
+
+        private bool ShouldSwap(int a, int b) =>
+            SelectedSortDirection == SortDirection.Ascending ? a > b : a < b;
 
         private List<Route> LoadRoutes()
         {
             try
             {
                 var json = File.ReadAllText("routes.json");
-                return JsonConvert.DeserializeObject<List<Route>>(json) ?? [];
+                return JsonConvert.DeserializeObject<List<Route>>(json) ?? new List<Route>();
             }
             catch (Exception e)
             {
-                MessageBox.Show($"Error loading routes: {e.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                return [];
+                DisplayError("Error loading routes", e);
+                return new List<Route>();
+            }
+        }
+
+        private void DisplayError(string message, Exception e)
+        {
+            MessageBox.Show($"{message}: {e.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            SortingStatus = message;
+        }
+
+        private void UpdateRoutes(List<Route> routes)
+        {
+            Routes.Clear();
+            foreach (var route in routes)
+            {
+                Routes.Add(route);
             }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
-        protected virtual void OnPropertyChanged(string propertyName) =>
+
+        private void OnPropertyChanged(string propertyName) =>
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+        private bool SetProperty<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string propertyName = "")
+        {
+            if (Equals(field, value)) return false;
+            field = value;
+            OnPropertyChanged(propertyName);
+            return true;
+        }
     }
 }
