@@ -2,16 +2,9 @@ using System.Windows.Input;
 
 namespace ShortestRouteFinder.ViewModel;
 
-public class RelayCommand : ICommand
+public class RelayCommand(Action execute, Func<bool>? canExecute = null) : ICommand
 {
-    private readonly Action _execute;
-    private readonly Func<bool>? _canExecute;
-
-    public RelayCommand(Action execute, Func<bool>? canExecute = null)
-    {
-        _execute = execute ?? throw new ArgumentNullException(nameof(execute));
-        _canExecute = canExecute;
-    }
+    private readonly Action _execute = execute ?? throw new ArgumentNullException(nameof(execute));
 
     public event EventHandler? CanExecuteChanged
     {
@@ -19,6 +12,6 @@ public class RelayCommand : ICommand
         remove => CommandManager.RequerySuggested -= value;
     }
 
-    public bool CanExecute(object? parameter) => _canExecute?.Invoke() ?? true;
+    public bool CanExecute(object? parameter) => canExecute?.Invoke() ?? true;
     public void Execute(object? parameter) => _execute();
 }

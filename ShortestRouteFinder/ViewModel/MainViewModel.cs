@@ -1,28 +1,30 @@
-﻿using ShortestRouteFinder.Model;
+﻿using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
-using Newtonsoft.Json;
+using ShortestRouteFinder.Model;
 
 namespace ShortestRouteFinder.ViewModel
 {
     public class MainViewModel : INotifyPropertyChanged
     {
+        private readonly SortService _sortService;
+        private readonly RouteRepository _repository;
         private string? _sortingStatus = "Ready";
         private Route _selectedRoute = new();
         private SortType _selectedSortType = SortType.QuickSort;
         private SortDirection _selectedSortDirection = SortDirection.Ascending;
         private bool _isEditing;
         private Route? _routeBeforeEdit;
-        
+
         public event PropertyChangedEventHandler? PropertyChanged;
-        
+
         public ObservableCollection<Route> Routes { get; } = new();
         public Array SortTypes => Enum.GetValues(typeof(SortType));
         public Array SortDirections => Enum.GetValues(typeof(SortDirection));
-        
+
         public ICommand SortCommand { get; }
         public ICommand LoadCommand { get; }
         public ICommand SaveCommand { get; }
@@ -47,13 +49,13 @@ namespace ShortestRouteFinder.ViewModel
             get => _selectedSortDirection;
             set => Update(ref _selectedSortDirection, value);
         }
-        
+
         public Route SelectedRoute
         {
             get => _selectedRoute;
             set
             {
-                if (_isEditing) return; // Prevent selection change while editing
+                if (_isEditing) return;
                 if (value != null)
                 {
                     _selectedRoute = value.Clone();
@@ -71,12 +73,16 @@ namespace ShortestRouteFinder.ViewModel
 
         public MainViewModel()
         {
+            _sortService = new SortService();
+            _repository = new RouteRepository();
+
             SortCommand = new RelayCommand(Sort, () => !IsEditing);
             LoadCommand = new RelayCommand(Load, () => !IsEditing);
             SaveCommand = new RelayCommand(Save, () => IsEditing);
             CancelCommand = new RelayCommand(Cancel, () => IsEditing);
             AddNewCommand = new RelayCommand(AddNew, () => !IsEditing);
             RemoveCommand = new RelayCommand(RemoveRoute, () => !IsEditing && SelectedRoute != null);
+            
             Load();
         }
 
@@ -95,7 +101,7 @@ namespace ShortestRouteFinder.ViewModel
                 Try(() =>
                 {
                     Routes.Remove(_routeBeforeEdit!);
-                    File.WriteAllText("routes.json", JsonConvert.SerializeObject(Routes, Formatting.Indented));
+                    _repository.SaveRoutes(Routes);
                     SelectedRoute = Routes.FirstOrDefault() ?? new();
                     SortingStatus = "Route removed successfully";
                 });
@@ -124,8 +130,8 @@ namespace ShortestRouteFinder.ViewModel
                         Routes[index] = _selectedRoute;
                     }
                 }
-                
-                File.WriteAllText("routes.json", JsonConvert.SerializeObject(Routes, Formatting.Indented));
+
+                _repository.SaveRoutes(Routes);
                 
                 IsEditing = false;
                 _routeBeforeEdit = null;
@@ -140,7 +146,6 @@ namespace ShortestRouteFinder.ViewModel
                 if (Routes.Contains(_routeBeforeEdit) && _routeBeforeEdit.Start == "New Start" 
                     && _routeBeforeEdit.Destination == "New Destination" && _routeBeforeEdit.Distance == 0)
                 {
-                    // Remove the new route if it was cancelled
                     Routes.Remove(_routeBeforeEdit);
                 }
                 SelectedRoute = _routeBeforeEdit;
@@ -150,86 +155,42 @@ namespace ShortestRouteFinder.ViewModel
             SortingStatus = "Edit cancelled";
         }
 
-
-        private void Sort() => Try(() =>
+        private void Sort()
         {
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            var list = Routes.ToList();
-            
-            if (SelectedSortType == SortType.QuickSort)
-                Sort(list, 0, list.Count - 1);
-            else
-                BubbleSort(list);
-            
-            Routes.Clear();
-            list.ForEach(Routes.Add);
-            SortingStatus = $"Done in {sw.ElapsedMilliseconds}ms";
-        });
-
-        private void BubbleSort(List<Route> list)
-        {
-            for (var i = 0; i < list.Count - 1; i++)
+            Try(() =>
             {
-                for (var j = 0; j < list.Count - i - 1; j++)
-                {
-                    var shouldSwap = SelectedSortDirection == SortDirection.Ascending
-                        ? list[j].Distance > list[j + 1].Distance
-                        : list[j].Distance < list[j + 1].Distance;
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                var list = Routes.ToList();
 
-                    if (shouldSwap)
-                    {
-                        (list[j], list[j + 1]) = (list[j + 1], list[j]);
-                    }
-                }
-            }
+                if (SelectedSortType == SortType.QuickSort)
+                    _sortService.QuickSort(list, 0, list.Count - 1, SelectedSortDirection);
+                else
+                    _sortService.BubbleSort(list, SelectedSortDirection);
+
+                Routes.Clear();
+                list.ForEach(Routes.Add);
+                SortingStatus = $"Done in {sw.ElapsedMilliseconds}ms";
+            });
         }
 
-        private void Sort(List<Route> r, int l, int h)
+        private void Load()
         {
-            if (l >= h) return;
-            
-            var pivotIndex = Partition(r, l, h);
-            Sort(r, l, pivotIndex - 1);
-            Sort(r, pivotIndex + 1, h);
+            Try(() =>
+            {
+                Routes.Clear();
+                var routes = _repository.LoadRoutes();
+                routes.ForEach(Routes.Add);
+                SelectedRoute = Routes.FirstOrDefault() ?? new();
+                SortingStatus = "Loaded";
+            });
         }
 
-        private int Partition(List<Route> r, int l, int h)
+        private void Try(Action action)
         {
-            var pivot = r[h].Distance;
-            var i = l - 1;
-
-            for (var j = l; j < h; j++)
-            {
-                var shouldSwap = SelectedSortDirection == SortDirection.Ascending
-                    ? r[j].Distance <= pivot
-                    : r[j].Distance >= pivot;
-
-                if (shouldSwap)
-                {
-                    i++;
-                    (r[i], r[j]) = (r[j], r[i]);
-                }
+            try 
+            { 
+                action(); 
             }
-
-            (r[i + 1], r[h]) = (r[h], r[i + 1]);
-            return i + 1;
-        }
-
-        private void Load() => Try(() =>
-        {
-            Routes.Clear();
-            if (File.Exists("routes.json"))
-            {
-                JsonConvert.DeserializeObject<List<Route>>(
-                    File.ReadAllText("routes.json"))?.ForEach(Routes.Add);
-            }
-            SelectedRoute = Routes.FirstOrDefault() ?? new();
-            SortingStatus = "Loaded";
-        });
-
-        private void Try(Action a)
-        {
-            try { a(); }
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -237,14 +198,11 @@ namespace ShortestRouteFinder.ViewModel
             }
         }
 
-        private void Update<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? p = null)
+        private void Update<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
         {
             if (EqualityComparer<T>.Default.Equals(field, value)) return;
             field = value;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(p));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
-
-    public enum SortType { BubbleSort, QuickSort }
-    public enum SortDirection { Ascending, Descending }
 }
