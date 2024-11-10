@@ -129,7 +129,7 @@
                     <GridViewColumn Header="Destination" 
                                   DisplayMemberBinding="{Binding Destination}" 
                                   Width="250"/>
-                    <GridViewColumn Header="Distance (km)" 
+                    <GridViewColumn Header="Distance (mil / 10 km)" 
                                   DisplayMemberBinding="{Binding Distance}" 
                                   Width="120"/>
                 </GridView>
