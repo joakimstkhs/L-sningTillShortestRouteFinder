@@ -134,7 +134,7 @@
                 </UniformGrid>
                 <StackPanel Orientation="Horizontal" Margin="0,15,0,0" HorizontalAlignment="Center">
                     <Button Content="Reload Data" Command="{Binding LoadCommand}" Style="{StaticResource ButtonStyle}"/>
-                    <Button Content="Sort Routes" Command="{Binding SortCommand}" Style="{StaticResource ButtonStyle}"/>
+                    <Button Content="Sort Routes (by distance)" Command="{Binding SortCommand}" Style="{StaticResource ButtonStyle}"/>
                     <Button Content="Add New" Command="{Binding AddNewCommand}" Style="{StaticResource ButtonStyle}"/>
                     <Button Content="Remove" Command="{Binding RemoveCommand}" Style="{StaticResource ButtonStyle}" Background="#FF5252"/>
                 </StackPanel>
