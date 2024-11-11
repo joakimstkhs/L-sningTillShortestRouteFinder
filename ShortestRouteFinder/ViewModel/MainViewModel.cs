@@ -183,7 +183,7 @@ namespace ShortestRouteFinder.ViewModel
                 var routes = _repository.LoadRoutes();
                 routes.ForEach(Routes.Add);
                 SelectedRoute = Routes.FirstOrDefault() ?? new();
-                SortingStatus = "Loaded";
+                SortingStatus = "Data loaded";
             });
         }
 
