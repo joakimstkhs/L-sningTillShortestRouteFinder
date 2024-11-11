@@ -1,9 +1,8 @@
-using System.Collections.Generic;
 using System.IO;
-using ShortestRouteFinder.Model;
 using Newtonsoft.Json;
+using ShortestRouteFinder.Model;
 
-namespace ShortestRouteFinder.ViewModel
+namespace ShortestRouteFinder.Repositories
 {
     public class RouteRepository
     {
@@ -18,7 +17,7 @@ namespace ShortestRouteFinder.ViewModel
             return JsonConvert.DeserializeObject<List<Route>>(json) ?? new List<Route>();
         }
 
-        public void SaveRoutes(IEnumerable<Route> routes)
+        public void SaveRoutes(IEnumerable<Route?> routes)
         {
             var json = JsonConvert.SerializeObject(routes, Formatting.Indented);
             File.WriteAllText(FileName, json);

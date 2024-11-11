@@ -50,7 +50,7 @@ namespace ShortestRouteFinder.Model
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        public Route Clone()
+        public Route? Clone()
         {
             return new Route
             {

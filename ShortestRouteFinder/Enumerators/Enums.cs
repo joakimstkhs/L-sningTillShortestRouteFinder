@@ -1,4 +1,4 @@
-namespace ShortestRouteFinder.ViewModel
+namespace ShortestRouteFinder.Enumerators
 {
     public enum SortType 
     { 

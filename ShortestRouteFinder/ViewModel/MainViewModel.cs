@@ -1,10 +1,12 @@
-﻿using System;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Linq;
 using System.Windows;
 using System.Windows.Input;
+using ShortestRouteFinder.Commands;
+using ShortestRouteFinder.Enumerators;
 using ShortestRouteFinder.Model;
+using ShortestRouteFinder.Repositories;
+using ShortestRouteFinder.Services;
 
 namespace ShortestRouteFinder.ViewModel
 {
@@ -13,7 +15,7 @@ namespace ShortestRouteFinder.ViewModel
         private readonly SortService _sortService;
         private readonly RouteRepository _repository;
         private string? _sortingStatus = "Ready";
-        private Route _selectedRoute = new();
+        private Route? _selectedRoute = new();
         private SortType _selectedSortType = SortType.QuickSort;
         private SortDirection _selectedSortDirection = SortDirection.Ascending;
         private bool _isEditing;
@@ -21,7 +23,7 @@ namespace ShortestRouteFinder.ViewModel
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public ObservableCollection<Route> Routes { get; } = new();
+        public ObservableCollection<Route?> Routes { get; } = new();
         public Array SortTypes => Enum.GetValues(typeof(SortType));
         public Array SortDirections => Enum.GetValues(typeof(SortDirection));
 
@@ -50,7 +52,7 @@ namespace ShortestRouteFinder.ViewModel
             set => Update(ref _selectedSortDirection, value);
         }
 
-        public Route SelectedRoute
+        public Route? SelectedRoute
         {
             get => _selectedRoute;
             set

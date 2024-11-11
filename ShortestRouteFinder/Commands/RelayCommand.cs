@@ -1,6 +1,6 @@
 using System.Windows.Input;
 
-namespace ShortestRouteFinder.ViewModel;
+namespace ShortestRouteFinder.Commands;
 
 public class RelayCommand(Action execute, Func<bool>? canExecute = null) : ICommand
 {

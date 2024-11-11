@@ -1,11 +1,12 @@
-using System.Collections.Generic;
+using ShortestRouteFinder.Enumerators;
 using ShortestRouteFinder.Model;
+using ShortestRouteFinder.ViewModel;
 
-namespace ShortestRouteFinder.ViewModel
+namespace ShortestRouteFinder.Services
 {
     public class SortService
     {
-        public void BubbleSort(List<Route> list, SortDirection direction)
+        public void BubbleSort(List<Route?> list, SortDirection direction)
         {
             for (var i = 0; i < list.Count - 1; i++)
             {
@@ -23,7 +24,7 @@ namespace ShortestRouteFinder.ViewModel
             }
         }
 
-        public void QuickSort(List<Route> routes, int low, int high, SortDirection direction)
+        public void QuickSort(List<Route?> routes, int low, int high, SortDirection direction)
         {
             while (true)
             {
@@ -35,7 +36,7 @@ namespace ShortestRouteFinder.ViewModel
             }
         }
 
-        private int Partition(List<Route> routes, int low, int high, SortDirection direction)
+        private int Partition(List<Route?> routes, int low, int high, SortDirection direction)
         {
             var pivot = routes[high].Distance;
             var i = low - 1;
